@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game Item Auction - ระบบประมูลของในเกม Real-time</title>
+  <!-- Google Fonts & Tailwind CSS CDN -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body {
+      font-family: 'Kanit', sans-serif;
+      background: radial-gradient(circle at top, #1e1b4b 0%, #0f172a 100%);
+      color: #f8fafc;
+      min-height: 100vh;
+    }
+    .glow-card {
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+      border: 1px solid rgba(129, 140, 248, 0.2);
+    }
+    .bid-flash {
+      animation: flash 0.6s ease-in-out;
+    }
+    @keyframes flash {
+      0% { transform: scale(1); background-color: rgba(234, 179, 8, 0.4); }
+      50% { transform: scale(1.05); background-color: rgba(234, 179, 8, 0.8); }
+      100% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body class="p-4 md:p-8">
+
+  <!-- Header -->
+  <header class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center pb-6 border-b border-indigo-900/50 mb-8 gap-4">
+    <div class="flex items-center gap-3">
+      <div class="bg-indigo-600 p-3 rounded-2xl shadow-lg shadow-indigo-500/30 text-2xl">
+        ⚔️
+      </div>
+      <div>
+        <h1 class="text-3xl font-bold bg-gradient-to-r from-amber-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
+          GameZone Auction
+        </h1>
+        <p class="text-xs text-indigo-300">ระบบประมูลไอเทมเกมสด Real-time 24 ชม.</p>
+      </div>
+    </div>
+
+    <!-- Status & User Profile -->
+    <div class="flex items-center gap-4 bg-slate-900/80 px-4 py-2.5 rounded-2xl border border-indigo-500/20 backdrop-blur">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-xs text-emerald-400 font-semibold" id="connStatus">ออนไลน์ Real-time</span>
+      </div>
+      <div class="h-4 w-px bg-slate-700"></div>
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-slate-400">ชื่อของคุณ:</span>
+        <input type="text" id="usernameInput" value="Player_77" class="bg-slate-800 text-amber-300 text-xs px-2.5 py-1 rounded-lg border border-slate-700 focus:outline-none focus:border-amber-400 font-semibold w-28 text-center">
+      </div>
+    </div>
+  </header>
+
+  <!-- รายการสินค้าประมูล Grid -->
+  <main class="max-w-6xl mx-auto">
+    <div id="auctionGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- ข้อมูลจะถูก render ผ่าน JavaScript -->
+    </div>
+  </main>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-6 right-6 hidden bg-rose-600 text-white px-5 py-3 rounded-xl shadow-2xl z-50 transition-all font-medium text-sm border border-rose-400 flex items-center gap-2">
+    <span>⚠️</span>
+    <span id="toastMsg">ข้อความแจ้งเตือน</span>
+  </div>
+
+  <script>
+    const socket = io();
+    let auctionsData = [];
+
+    const toast = document.getElementById('toast');
+    const toastMsg = document.getElementById('toastMsg');
+    const usernameInput = document.getElementById('usernameInput');
+
+    function showToast(msg, isError = true) {
+      toastMsg.innerText = msg;
+      toast.className = `fixed bottom-6 right-6 flex items-center gap-2 px-5 py-3 rounded-xl shadow-2xl z-50 text-sm font-medium border ${
+        isError ? 'bg-rose-600 border-rose-400 text-white' : 'bg-emerald-600 border-emerald-400 text-white'
+      }`;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3500);
+    }
+
+    // รับข้อมูลทั้งหมดครั้งแรก
+    socket.on('init_data', (data) => {
+      auctionsData = data;
+      renderAuctions();
+    });
+
+    // รับการอัปเดตราคาแบบ Real-time
+    socket.on('bid_updated', (updated) => {
+      const target = auctionsData.find(a => a.id === updated.auctionId);
+      if (target) {
+        target.currentPrice = updated.currentPrice;
+        target.highestBidder = updated.highestBidder;
+        target.endTime = updated.endTime;
+        target.history = updated.history;
+
+        // อัปเดต UI เฉพาะการ์ดนั้นทันที
+        updateCardUI(target);
+        showToast(`🔥 มีการเคาะราคาใหม่ที่ไอเทม #${target.id} โดย ${updated.highestBidder}!`, false);
+      }
+    });
+
+    socket.on('bid_error', (err) => {
+      showToast(err.message, true);
+    });
+
+    function placeBid(id, amount) {
+      const username = usernameInput.value.trim() || 'Player_' + Math.floor(Math.random() * 900 + 100);
+      socket.emit('place_bid', {
+        auctionId: id,
+        bidderName: username,
+        bidAmount: amount
+      });
+    }
+
+    function renderAuctions() {
+      const container = document.getElementById('auctionGrid');
+      container.innerHTML = auctionsData.map(item => `
+        <div id="card-${item.id}" class="glow-card bg-slate-900/90 rounded-3xl overflow-hidden flex flex-col justify-between transition-all duration-300 hover:border-indigo-400">
+          <div>
+            <!-- ภาพไอเทม -->
+            <div class="relative h-52 overflow-hidden group">
+              <img src="${item.image}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
+              <span class="absolute top-3 left-3 bg-indigo-950/80 backdrop-blur text-indigo-300 text-xs px-3 py-1 rounded-full border border-indigo-500/30 font-semibold">
+                🎮 ${item.game}
+              </span>
+              <span id="badge-status-${item.id}" class="absolute top-3 right-3 bg-red-600/90 backdrop-blur text-white text-xs px-3 py-1 rounded-full font-bold shadow-lg animate-pulse">
+                🔴 สด
+              </span>
+            </div>
+
+            <!-- รายละเอียด -->
+            <div class="p-5">
+              <h2 class="text-xl font-bold text-white mb-2 leading-tight">${item.title}</h2>
+              <p class="text-xs text-slate-400 mb-4 line-clamp-2">${item.description}</p>
+
+              <!-- กล่องราคา & ตัวนับเวลา -->
+              <div class="bg-slate-800/80 rounded-2xl p-4 border border-slate-700/60 mb-4">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-xs text-slate-400">ราคาปัจจุบัน:</span>
+                  <div class="text-right">
+                    <span id="price-${item.id}" class="text-2xl font-bold text-amber-400 transition-all">
+                      ฿${item.currentPrice.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+                <div class="flex justify-between items-center text-xs text-slate-400 border-t border-slate-700/50 pt-2">
+                  <span>ผู้นำประมูล:</span>
+                  <span id="bidder-${item.id}" class="font-semibold text-indigo-300 bg-indigo-950 px-2 py-0.5 rounded-lg border border-indigo-800">
+                    👑 ${item.highestBidder}
+                  </span>
+                </div>
+              </div>
+
+              <!-- นับถอยหลัง -->
+              <div class="flex items-center justify-between bg-indigo-950/50 px-3.5 py-2 rounded-xl border border-indigo-900/60 mb-4">
+                <span class="text-xs text-indigo-300 flex items-center gap-1.5">
+                  ⏱️ เวลาที่เหลือ:
+                </span>
+                <span id="timer-${item.id}" class="text-sm font-bold text-emerald-400 tracking-wider">
+                  คำนวณ...
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- โซนปุ่มบิด -->
+          <div class="p-5 pt-0">
+            <div class="grid grid-cols-2 gap-2 mb-2">
+              <button onclick="quickBid(${item.id}, ${item.minBidStep})" class="bg-indigo-600/80 hover:bg-indigo-600 text-white text-xs py-2.5 rounded-xl font-semibold border border-indigo-500/40 transition">
+                +฿${item.minBidStep}
+              </button>
+              <button onclick="quickBid(${item.id}, ${item.minBidStep * 2})" class="bg-indigo-600/80 hover:bg-indigo-600 text-white text-xs py-2.5 rounded-xl font-semibold border border-indigo-500/40 transition">
+                +฿${item.minBidStep * 2}
+              </button>
+            </div>
+            
+            <div class="flex gap-2">
+              <input type="number" id="custom-bid-${item.id}" placeholder="ระบุราคา" class="w-1/2 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-amber-300 focus:outline-none focus:border-amber-400">
+              <button onclick="submitCustomBid(${item.id})" class="w-1/2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold py-2 rounded-xl text-sm transition shadow-lg shadow-amber-500/20">
+                เคาะราคา 🔥
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      startTimers();
+    }
+
+    function quickBid(id, step) {
+      const item = auctionsData.find(a => a.id === id);
+      if (item) {
+        placeBid(id, item.currentPrice + step);
+      }
+    }
+
+    function submitCustomBid(id) {
+      const input = document.getElementById(`custom-bid-${id}`);
+      const val = Number(input.value);
+      if (val) {
+        placeBid(id, val);
+        input.value = '';
+      } else {
+        showToast('กรุณาระบุจำนวนเงินที่ต้องการเคาะ');
+      }
+    }
+
+    function updateCardUI(item) {
+      const priceElem = document.getElementById(`price-${item.id}`);
+      const bidderElem = document.getElementById(`bidder-${item.id}`);
+      if (priceElem) {
+        priceElem.innerText = `฿${item.currentPrice.toLocaleString()}`;
+        priceElem.classList.add('bid-flash');
+        setTimeout(() => priceElem.classList.remove('bid-flash'), 700);
+      }
+      if (bidderElem) {
+        bidderElem.innerText = `👑 ${item.highestBidder}`;
+      }
+    }
+
+    function startTimers() {
+      setInterval(() => {
+        const now = Date.now();
+        auctionsData.forEach(item => {
+          const timerElem = document.getElementById(`timer-${item.id}`);
+          if (!timerElem) return;
+
+          const diff = item.endTime - now;
+          if (diff <= 0) {
+            timerElem.innerText = 'สิ้นสุดการประมูล';
+            timerElem.className = 'text-sm font-bold text-slate-500';
+            const badge = document.getElementById(`badge-status-${item.id}`);
+            if (badge) {
+              badge.innerText = 'ปิดแล้ว';
+              badge.className = 'absolute top-3 right-3 bg-slate-700 text-slate-300 text-xs px-3 py-1 rounded-full font-bold';
+            }
+          } else {
+            const mins = Math.floor(diff / 60000);
+            const secs = Math.floor((diff % 60000) / 1000);
+            timerElem.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')} นาที`;
+          }
+        });
+      }, 1000);
+    }
+  </script>
+</body>
+</html>
