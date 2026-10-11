@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#2a2e39"/>
+      <stop offset="100%" stop-color="#14171d"/>
+    </radialGradient>
+  </defs>
+  <rect width="400" height="400" rx="30" fill="url(#bg)"/>
+  
+  <!-- Cola Can Body -->
+  <rect x="140" y="110" width="120" height="190" rx="20" fill="#dc2626" stroke="#991b1b" stroke-width="4"/>
+  
+  <!-- Can Top/Bottom Rim -->
+  <ellipse cx="200" cy="115" rx="60" ry="16" fill="#cbd5e1" stroke="#94a3b8" stroke-width="3"/>
+  <ellipse cx="200" cy="110" rx="45" ry="10" fill="#94a3b8"/>
+  <ellipse cx="200" cy="295" rx="60" ry="16" fill="#94a3b8"/>
+
+  <!-- Bloxy Logo -->
+  <rect x="155" y="150" width="90" height="90" rx="10" fill="#ffffff"/>
+  <rect x="170" y="165" width="60" height="60" rx="6" fill="#dc2626"/>
+  <polygon points="190,175 215,195 190,215" fill="#facc15"/>
+
+  <text x="200" y="270" font-family="'Impact', Arial, sans-serif" font-size="22" fill="#ffffff" font-weight="900" text-anchor="middle">BLOXY COLA</text>
+  <text x="200" y="370" font-family="Arial, sans-serif" font-weight="900" font-size="20" fill="#f87171" text-anchor="middle">BLOXY COLA GEAR</text>
+</svg>

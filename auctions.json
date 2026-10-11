@@ -3,7 +3,7 @@
     "id": 1,
     "title": "Dominus Empyreus",
     "game": "Roblox Limited",
-    "image": "https://tr.rbxcdn.com/180DAY-4f364e7c7a33a59828ee55038b3a0e14/420/420/Hat/Webp/noFilter",
+    "image": "/images/dominus.svg",
     "description": "หมวก Dominus ในตำนาน สุดยอดไอเทมหายากระดับพระกาฬ มีเพียงไม่กี่ชิ้นในโลก Roblox",
     "currentPrice": 250000,
     "minBidStep": 5000,
@@ -11,23 +11,15 @@
     "endTime": 1791703200000,
     "status": "active",
     "history": [
-      {
-        "user": "BuilderBoy_TH",
-        "amount": 250000,
-        "time": "13:30:00"
-      },
-      {
-        "user": "NoobMaster99",
-        "amount": 240000,
-        "time": "13:25:00"
-      }
+      { "user": "BuilderBoy_TH", "amount": 250000, "time": "13:30:00" },
+      { "user": "NoobMaster99", "amount": 240000, "time": "13:25:00" }
     ]
   },
   {
     "id": 2,
     "title": "Valkyrie Helm (หมวกวัลคีรี)",
     "game": "Roblox Classic",
-    "image": "https://tr.rbxcdn.com/180DAY-d5da3efbfae92535ae7db848773950ef/420/420/Hat/Webp/noFilter",
+    "image": "/images/valkyrie.svg",
     "description": "หมวกปีกนางฟ้าคลาสสิก ใส่แล้วดูเท่ หรูหรา เหมาะกับสายสะสมของ Limited ตัวจริง",
     "currentPrice": 95000,
     "minBidStep": 2000,
@@ -35,18 +27,14 @@
     "endTime": 1791704400000,
     "status": "active",
     "history": [
-      {
-        "user": "ProGamer_999",
-        "amount": 95000,
-        "time": "13:28:00"
-      }
+      { "user": "ProGamer_999", "amount": 95000, "time": "13:28:00" }
     ]
   },
   {
     "id": 3,
     "title": "Bloxy Cola Limited Edition",
     "game": "Roblox Gear",
-    "image": "https://tr.rbxcdn.com/180DAY-d7373f73ce02dd17c462334e382d6da6/420/420/Gear/Webp/noFilter",
+    "image": "/images/bloxy-cola.svg",
     "description": "เครื่องดื่มเพิ่มพลังบล็อกซี่โคล่า กินแล้ววิ่งเร็วขึ้น 50% พร้อมเสียงดื่มสุดคลาสสิก",
     "currentPrice": 12000,
     "minBidStep": 500,
@@ -54,11 +42,7 @@
     "endTime": 1791702000000,
     "status": "active",
     "history": [
-      {
-        "user": "RobloxianTH",
-        "amount": 12000,
-        "time": "13:10:00"
-      }
+      { "user": "RobloxianTH", "amount": 12000, "time": "13:10:00" }
     ]
   }
 ]

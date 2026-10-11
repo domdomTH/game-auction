@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#2a2e39"/>
+      <stop offset="100%" stop-color="#14171d"/>
+    </radialGradient>
+  </defs>
+  <rect width="400" height="400" rx="30" fill="url(#bg)"/>
+  
+  <!-- Wings Left -->
+  <path d="M 120 180 C 40 100, 60 40, 140 110 C 130 140, 125 160, 120 180 Z" fill="#38bdf8" stroke="#0284c7" stroke-width="3"/>
+  <path d="M 110 200 C 30 150, 40 90, 125 140 Z" fill="#7dd3fc"/>
+  
+  <!-- Wings Right -->
+  <path d="M 280 180 C 360 100, 340 40, 260 110 C 270 140, 275 160, 280 180 Z" fill="#38bdf8" stroke="#0284c7" stroke-width="3"/>
+  <path d="M 290 200 C 370 150, 360 90, 275 140 Z" fill="#7dd3fc"/>
+
+  <!-- Helmet Base -->
+  <path d="M 140 160 C 140 100, 260 100, 260 160 L 260 250 C 260 280, 140 280, 140 250 Z" fill="#0f172a" stroke="#38bdf8" stroke-width="4"/>
+  <ellipse cx="200" cy="180" rx="40" ry="25" fill="#38bdf8" opacity="0.8"/>
+  <circle cx="200" cy="130" r="12" fill="#facc15" stroke="#ca8a04" stroke-width="2"/>
+
+  <text x="200" y="370" font-family="Arial, sans-serif" font-weight="900" font-size="20" fill="#38bdf8" text-anchor="middle">VALKYRIE HELM</text>
+</svg>
