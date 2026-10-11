@@ -152,32 +152,32 @@
             <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="md:col-span-2">
                 <label class="block text-xs text-slate-400 mb-1">ชื่อไอเทม Roblox:</label>
-                <input type="text" onchange="updateField(${idx}, 'title', this.value)" value="${item.title}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-medium focus:outline-none focus:border-indigo-400">
+                <input type="text" id="input-title-${idx}" onchange="updateField(${idx}, 'title', this.value)" value="${item.title}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-medium focus:outline-none focus:border-indigo-400">
               </div>
 
               <div>
                 <label class="block text-xs text-slate-400 mb-1">ประเภท/หมวดหมู่:</label>
-                <input type="text" onchange="updateField(${idx}, 'game', this.value)" value="${item.game}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-400">
+                <input type="text" id="input-game-${idx}" onchange="updateField(${idx}, 'game', this.value)" value="${item.game}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-400">
               </div>
 
               <div>
                 <label class="block text-xs text-slate-400 mb-1">URL ลิงก์รูปภาพ (เปลี่ยนรูป):</label>
-                <input type="text" onchange="updateImage(${idx}, this.value)" value="${item.image}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-sky-400 focus:outline-none focus:border-indigo-400">
+                <input type="text" id="input-img-${idx}" onchange="updateImage(${idx}, this.value)" value="${item.image}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-sky-400 focus:outline-none focus:border-indigo-400">
               </div>
 
               <div class="md:col-span-2">
                 <label class="block text-xs text-slate-400 mb-1">รายละเอียดไอเทม:</label>
-                <textarea onchange="updateField(${idx}, 'description', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-indigo-400 h-16">${item.description}</textarea>
+                <textarea id="input-desc-${idx}" onchange="updateField(${idx}, 'description', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-indigo-400 h-16">${item.description}</textarea>
               </div>
 
               <div>
                 <label class="block text-xs text-slate-400 mb-1">ราคาปัจจุบัน (R$):</label>
-                <input type="number" onchange="updateField(${idx}, 'currentPrice', Number(this.value))" value="${item.currentPrice}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-amber-400 font-bold focus:outline-none focus:border-indigo-400">
+                <input type="number" id="input-price-${idx}" onchange="updateField(${idx}, 'currentPrice', Number(this.value))" value="${item.currentPrice}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-amber-400 font-bold focus:outline-none focus:border-indigo-400">
               </div>
 
               <div>
                 <label class="block text-xs text-slate-400 mb-1">เคาะขั้นต่ำ (+R$ ต่อครั้ง):</label>
-                <input type="number" onchange="updateField(${idx}, 'minBidStep', Number(this.value))" value="${item.minBidStep}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-400">
+                <input type="number" id="input-step-${idx}" onchange="updateField(${idx}, 'minBidStep', Number(this.value))" value="${item.minBidStep}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-400">
               </div>
 
               <!-- ตั้งเวลาประมูล -->
@@ -267,13 +267,39 @@
       showToast("เพิ่มไอเทมใหม่แล้ว! ปรับแต่งข้อมูลแล้วกด 'อัปเดตสดขึ้นเว็บไซต์'");
     }
 
+    function collectCurrentFormData() {
+      currentAuctions.forEach((item, idx) => {
+        const titleEl = document.getElementById(`input-title-${idx}`);
+        const gameEl = document.getElementById(`input-game-${idx}`);
+        const imgEl = document.getElementById(`input-img-${idx}`);
+        const descEl = document.getElementById(`input-desc-${idx}`);
+        const priceEl = document.getElementById(`input-price-${idx}`);
+        const stepEl = document.getElementById(`input-step-${idx}`);
+        const minsEl = document.getElementById(`mins-${item.id}`);
+
+        if (titleEl) item.title = titleEl.value;
+        if (gameEl) item.game = gameEl.value;
+        if (imgEl) item.image = imgEl.value;
+        if (descEl) item.description = descEl.value;
+        if (priceEl) item.currentPrice = Number(priceEl.value);
+        if (stepEl) item.minBidStep = Number(stepEl.value);
+        if (minsEl && Number(minsEl.value) > 0) {
+          item.endTime = Date.now() + Number(minsEl.value) * 60 * 1000;
+        }
+      });
+    }
+
     async function saveAndSync() {
       const btn = document.getElementById('btnSync');
       btn.innerText = 'กำลังส่งข้อมูลขึ้นเว็บ... ⏳';
       btn.disabled = true;
 
+      // บันทึกค่าล่าสุดจากช่องกรอกทั้งหมด
+      collectCurrentFormData();
+
       try {
-        const res = await fetch(`${getServerUrl()}/api/admin/update-all`, {
+        const targetServer = getServerUrl();
+        const res = await fetch(`${targetServer}/api/admin/update-all`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -283,13 +309,13 @@
         });
         const result = await res.json();
         if (result.success) {
-          showToast(result.message, true);
+          showToast(result.message + ` (${targetServer})`, true);
           updateUndoButton(true, result.backupCount);
         } else {
           showToast(result.error || 'เกิดข้อผิดพลาด', false);
         }
       } catch (err) {
-        showToast('เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว', false);
+        showToast('เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว: ' + err.message, false);
       } finally {
         btn.innerHTML = '<span>🚀</span><span>อัปเดตสดขึ้นเว็บไซต์ (Sync Live)</span>';
         btn.disabled = false;
