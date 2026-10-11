@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - จัดการระบบประมูลหลังบ้าน</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Kanit', sans-serif; background-color: #0f172a; color: #f8fafc; }
+    .glass-box { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(8px); border: 1px solid rgba(51, 65, 85, 0.8); }
+  </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen">
+
+  <div class="max-w-6xl mx-auto">
+    <!-- Admin Header -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-slate-700/80 mb-8">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-3xl">🛠️</span>
+          <h1 class="text-2xl font-bold text-white">ระบบจัดการหลังบ้าน (Admin Auction Control)</h1>
+        </div>
+        <p class="text-xs text-slate-400 mt-1">เพิ่ม แก้ไข ยกเลิก ตั้งเวลา หรือย้อนกลับสถานะสินค้าประมูล</p>
+      </div>
+
+      <!-- Action Buttons: Save & Undo -->
+      <div class="flex items-center gap-3">
+        <!-- ปุ่มย้อนกลับ Undo -->
+        <button id="btnUndo" onclick="undoChanges()" class="bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:hover:bg-amber-600 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 transition" disabled>
+          <span>↩️</span>
+          <span>ย้อนกลับก่อนอัปเดต</span>
+          <span id="undoBadge" class="bg-amber-800 text-amber-200 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+        </button>
+
+        <!-- ปุ่มอัปเดตสดขึ้นเว็บ -->
+        <button id="btnSync" onclick="saveAndSync()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-600/30 flex items-center gap-2 transition">
+          <span>🚀</span>
+          <span>อัปเดตสดขึ้นเว็บไซต์ (Sync Live)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ปุ่มสร้างรายการใหม่ -->
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-lg font-bold text-slate-200">รายการไอเทมในระบบ (<span id="itemCount">0</span>)</h2>
+      <button onclick="addNewItem()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-1.5 transition">
+        <span>➕</span> เพิ่มไอเทมประมูลใหม่
+      </button>
+    </div>
+
+    <!-- Items List Container -->
+    <div id="itemsList" class="space-y-6">
+      <!-- Item cards loaded via JS -->
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-6 right-6 hidden z-50 text-white px-5 py-3 rounded-xl shadow-2xl font-semibold text-sm border flex items-center gap-2">
+    <span id="tIcon">ℹ️</span>
+    <span id="tMsg">แจ้งเตือน</span>
+  </div>
+
+  <script>
+    let currentAuctions = [];
+
+    function showToast(msg, isSuccess = true) {
+      const toast = document.getElementById('toast');
+      document.getElementById('tMsg').innerText = msg;
+      document.getElementById('tIcon').innerText = isSuccess ? '✅' : '⚠️';
+      toast.className = `fixed bottom-6 right-6 flex items-center gap-2 px-5 py-3 rounded-xl shadow-2xl z-50 text-sm font-semibold border ${
+        isSuccess ? 'bg-emerald-600 border-emerald-400 text-white' : 'bg-rose-600 border-rose-400 text-white'
+      }`;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3500);
+    }
+
+    async function loadData() {
+      try {
+        const res = await fetch('/api/admin/auctions');
+        const data = await res.json();
+        currentAuctions = data.auctions;
+        updateUndoButton(data.canUndo, data.backupCount);
+        renderAdminItems();
+      } catch (err) {
+        showToast('โหลดข้อมูลล้มเหลว', false);
+      }
+    }
+
+    function updateUndoButton(canUndo, count) {
+      const btn = document.getElementById('btnUndo');
+      const badge = document.getElementById('undoBadge');
+      btn.disabled = !canUndo;
+      badge.innerText = count || 0;
+    }
+
+    function renderAdminItems() {
+      const container = document.getElementById('itemsList');
+      document.getElementById('itemCount').innerText = currentAuctions.length;
+
+      container.innerHTML = currentAuctions.map((item, idx) => {
+        // แปลง endTime เป็นนาทีคงเหลือ
+        const minsRemaining = Math.max(0, Math.round((item.endTime - Date.now()) / 60000));
+        const isCancelled = item.status === 'cancelled';
+
+        return `
+        <div class="glass-box rounded-2xl p-6 transition border ${isCancelled ? 'border-red-500/50 bg-red-950/10' : 'border-slate-700'}">
+          <div class="flex flex-col md:flex-row gap-6">
+            <!-- ภาพ Preview -->
+            <div class="w-full md:w-48 flex flex-col items-center gap-2">
+              <div class="w-40 h-40 bg-slate-900 rounded-xl overflow-hidden border border-slate-700 flex items-center justify-center p-2">
+                <img id="preview-img-${item.id}" src="${item.image}" alt="Preview" class="max-h-full object-contain" onerror="this.src='https://placehold.co/200x200?text=No+Image'">
+              </div>
+              <span class="text-[11px] font-bold ${isCancelled ? 'text-red-400' : 'text-emerald-400'}">
+                สถานะ: ${isCancelled ? '❌ ยกเลิกแล้ว' : '🟢 เปิดประมูล'}
+              </span>
+            </div>
+
+            <!-- ฟอร์มแก้ไข -->
+            <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="md:col-span-2">
+                <label class="block text-xs text-slate-400 mb-1">ชื่อไอเทม:</label>
+                <input type="text" onchange="updateField(${idx}, 'title', this.value)" value="${item.title}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-medium focus:outline-none focus:border-indigo-400">
+              </div>
+
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">หมวดหมู่/เกม:</label>
+                <input type="text" onchange="updateField(${idx}, 'game', this.value)" value="${item.game}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-400">
+              </div>
+
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">URL ลิงก์รูปภาพ (เปลี่ยนรูป):</label>
+                <input type="text" onchange="updateImage(${idx}, this.value)" value="${item.image}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-sky-400 focus:outline-none focus:border-indigo-400">
+              </div>
+
+              <div class="md:col-span-2">
+                <label class="block text-xs text-slate-400 mb-1">รายละเอียดไอเทม:</label>
+                <textarea onchange="updateField(${idx}, 'description', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-indigo-400 h-16">${item.description}</textarea>
+              </div>
+
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">ราคาปัจจุบัน (Robux / R$):</label>
+                <input type="number" onchange="updateField(${idx}, 'currentPrice', Number(this.value))" value="${item.currentPrice}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-amber-400 font-bold focus:outline-none focus:border-indigo-400">
+              </div>
+
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">เคาะขั้นต่ำ (+R$ ต่อครั้ง):</label>
+                <input type="number" onchange="updateField(${idx}, 'minBidStep', Number(this.value))" value="${item.minBidStep}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-400">
+              </div>
+
+              <!-- ตั้งเวลาประมูล -->
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">⏱️ ตั้งเวลาหมดประมูล (เหลืออีกกี่นาที):</label>
+                <div class="flex gap-2">
+                  <input type="number" id="mins-${item.id}" value="${minsRemaining}" class="w-24 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-emerald-400 font-bold text-center focus:outline-none">
+                  <button onclick="setMinutesTimer(${idx}, ${item.id})" class="bg-indigo-600/80 hover:bg-indigo-600 text-white text-xs px-3 rounded-xl font-semibold">
+                    ตั้งเวลา
+                  </button>
+                  <button onclick="addExtraTime(${idx}, 10)" class="bg-slate-800 hover:bg-slate-700 text-xs px-2.5 rounded-xl border border-slate-600">
+                    +10 นาที
+                  </button>
+                </div>
+              </div>
+
+              <!-- ปุ่มจัดการสถานะ -->
+              <div class="flex items-end justify-end gap-2">
+                <button onclick="toggleCancel(${idx})" class="${isCancelled ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-amber-600 hover:bg-amber-500'} text-white text-xs px-4 py-2 rounded-xl font-bold transition">
+                  ${isCancelled ? '🔄 เปิดประมูลใหม่' : '⏸️ ยกเลิกการประมูล'}
+                </button>
+                <button onclick="deleteItem(${idx})" class="bg-rose-600/80 hover:bg-rose-600 text-white text-xs px-3.5 py-2 rounded-xl font-bold transition">
+                  🗑️ ลบ
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        `;
+      }).join('');
+    }
+
+    function updateField(index, field, value) {
+      currentAuctions[index][field] = value;
+    }
+
+    function updateImage(index, url) {
+      currentAuctions[index].image = url;
+      const preview = document.getElementById(`preview-img-${currentAuctions[index].id}`);
+      if (preview) preview.src = url;
+    }
+
+    function setMinutesTimer(index, id) {
+      const input = document.getElementById(`mins-${id}`);
+      const mins = Number(input.value) || 0;
+      currentAuctions[index].endTime = Date.now() + mins * 60 * 1000;
+      showToast(`ตั้งเวลาไอเทม #${currentAuctions[index].id} ให้หมดใน ${mins} นาทีเรียบร้อย! อย่าลืมกดปุ่ม "อัปเดตสดขึ้นเว็บไซต์"`);
+    }
+
+    function addExtraTime(index, extraMins) {
+      const now = Date.now();
+      const currentEnd = currentAuctions[index].endTime > now ? currentAuctions[index].endTime : now;
+      currentAuctions[index].endTime = currentEnd + extraMins * 60 * 1000;
+      renderAdminItems();
+      showToast(`เพิ่มเวลา +${extraMins} นาทีเรียบร้อย!`);
+    }
+
+    function toggleCancel(index) {
+      const isCancelled = currentAuctions[index].status === 'cancelled';
+      currentAuctions[index].status = isCancelled ? 'active' : 'cancelled';
+      renderAdminItems();
+    }
+
+    function deleteItem(index) {
+      if (confirm(`คุณต้องการลบไอเทม "${currentAuctions[index].title}" หรือไม่?`)) {
+        currentAuctions.splice(index, 1);
+        renderAdminItems();
+      }
+    }
+
+    function addNewItem() {
+      const newId = currentAuctions.length > 0 ? Math.max(...currentAuctions.map(a => a.id)) + 1 : 1;
+      currentAuctions.push({
+        id: newId,
+        title: "ไอเทม Roblox ใหม่ #" + newId,
+        game: "Roblox Item",
+        image: "https://placehold.co/300x300?text=Roblox+Item",
+        description: "รายละเอียดไอเทม Roblox",
+        currentPrice: 1000,
+        minBidStep: 100,
+        highestBidder: "ไม่มี",
+        endTime: Date.now() + 20 * 60 * 1000,
+        status: "active",
+        history: []
+      });
+      renderAdminItems();
+      showToast("เพิ่มไอเทมใหม่แล้ว! ปรับแต่งข้อมูลแล้วกด 'อัปเดตสดขึ้นเว็บไซต์'");
+    }
+
+    // ฟังก์ชันกด "อัปเดตสดขึ้นเว็บไซต์ (Sync Live)"
+    async function saveAndSync() {
+      const btn = document.getElementById('btnSync');
+      btn.innerText = 'กำลังส่งข้อมูล... ⏳';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/admin/update-all', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ newAuctions: currentAuctions })
+        });
+        const result = await res.json();
+        if (result.success) {
+          showToast(result.message, true);
+          updateUndoButton(true, result.backupCount);
+        } else {
+          showToast(result.error || 'เกิดข้อผิดพลาด', false);
+        }
+      } catch (err) {
+        showToast('เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว', false);
+      } finally {
+        btn.innerHTML = '<span>🚀</span><span>อัปเดตสดขึ้นเว็บไซต์ (Sync Live)</span>';
+        btn.disabled = false;
+      }
+    }
+
+    // ฟังก์ชันกดย้อนกลับ Undo
+    async function undoChanges() {
+      if (!confirm('คุณต้องการย้อนกลับไปค่าก่อนหน้าหรือไม่?')) return;
+
+      try {
+        const res = await fetch('/api/admin/undo', { method: 'POST' });
+        const result = await res.json();
+        if (result.success) {
+          showToast(result.message, true);
+          loadData();
+        } else {
+          showToast(result.error || 'ไม่สามารถย้อนกลับได้', false);
+        }
+      } catch (err) {
+        showToast('เกิดข้อผิดพลาดในการย้อนกลับ', false);
+      }
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
