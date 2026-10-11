@@ -84,7 +84,7 @@
 </head>
 <body class="p-3 md:p-6 min-h-screen">
 
-  <!-- Top Navigation Bar สไตล์ Roblox -->
+  <!-- Top Navigation Bar สไตล์ Roblox (ไม่มีปุ่ม Admin ให้คนอื่นเห็น) -->
   <header class="max-w-6xl mx-auto bg-[#232527] border-b-4 border-[#111214] px-5 py-3.5 rounded-2xl flex flex-wrap justify-between items-center mb-8 gap-4 shadow-xl">
     <div class="flex items-center gap-3">
       <!-- Roblox Icon Style Logo -->
@@ -99,7 +99,7 @@
       </div>
     </div>
 
-    <!-- แผงผู้เล่น & ปุ่มไปหน้าแอดมิน -->
+    <!-- แผงผู้เล่นทั่วไป -->
     <div class="flex items-center gap-3">
       <div class="flex items-center gap-2 bg-[#191b1d] px-3.5 py-1.5 rounded-xl border-2 border-[#393b3d]">
         <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
@@ -107,13 +107,9 @@
       </div>
 
       <div class="flex items-center gap-2 bg-[#191b1d] px-3 py-1.5 rounded-xl border-2 border-[#393b3d]">
-        <span class="text-xs text-gray-400">👤 ชื่อ:</span>
-        <input type="text" id="usernameInput" value="RobloxPro_01" class="bg-transparent text-amber-400 font-bold text-xs w-28 focus:outline-none text-center">
+        <span class="text-xs text-gray-400">👤 ชื่อของคุณ:</span>
+        <input type="text" id="usernameInput" value="Robloxian_Player" class="bg-transparent text-amber-400 font-bold text-xs w-28 focus:outline-none text-center">
       </div>
-
-      <a href="/admin" target="_blank" class="bg-purple-600 hover:bg-purple-500 text-white text-xs px-3.5 py-2 rounded-xl font-bold shadow-md flex items-center gap-1.5 transition">
-        ⚙️ แอดมินหลังบ้าน
-      </a>
     </div>
   </header>
 
@@ -172,7 +168,7 @@
     });
 
     function placeBid(id, amount) {
-      const user = usernameInput.value.trim() || 'Noob_' + Math.floor(Math.random() * 899 + 100);
+      const user = usernameInput.value.trim() || 'Player_' + Math.floor(Math.random() * 899 + 100);
       socket.emit('place_bid', {
         auctionId: id,
         bidderName: user,
@@ -186,7 +182,7 @@
         const isCancelled = item.status === 'cancelled';
         return `
         <div id="card-${item.id}" class="rbx-card flex flex-col justify-between overflow-hidden relative">
-          ${isCancelled ? '<div class="absolute inset-0 bg-black/75 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center font-black text-red-500 text-2xl tracking-wider uppercase border-4 border-red-600/50 m-2 rounded-xl">⛔ ยกเลิกการประมูลแล้ว</div>' : ''}
+          ${isCancelled ? '<div class="absolute inset-0 bg-black/80 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center font-black text-red-500 text-2xl tracking-wider uppercase border-4 border-red-600/50 m-2 rounded-xl">⛔ ยกเลิกการประมูลแล้ว</div>' : ''}
           
           <div>
             <!-- ภาพไอเทม Roblox -->

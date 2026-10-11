@@ -11,17 +11,17 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 3000;
+// รหัสผ่านลับของเจ้าของเว็บ (เปลี่ยนได้)
+const ADMIN_SECRET = process.env.ADMIN_SECRET || 'roblox_secret_key_999';
 const DB_FILE = path.join(__dirname, 'auctions.json');
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ฟังก์ชันโหลดข้อมูล
 function loadAuctions() {
   try {
     if (fs.existsSync(DB_FILE)) {
-      const data = fs.readFileSync(DB_FILE, 'utf8');
-      return JSON.parse(data);
+      return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
     }
   } catch (err) {
     console.error('Error reading db:', err);
@@ -29,7 +29,6 @@ function loadAuctions() {
   return [];
 }
 
-// ฟังก์ชันบันทึกข้อมูล
 function saveAuctions(data) {
   try {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
@@ -39,8 +38,6 @@ function saveAuctions(data) {
 }
 
 let auctions = loadAuctions();
-
-// ระบบ Undo / Backup ประวัติการแก้ไขของ Admin
 let backupHistory = [];
 
 function createBackup(note = "Previous state") {
@@ -49,68 +46,48 @@ function createBackup(note = "Previous state") {
     note: note,
     data: JSON.parse(JSON.stringify(auctions))
   });
-  // เก็บสำรองย้อนหลังสูงสุด 20 ครั้ง
-  if (backupHistory.length > 20) {
-    backupHistory.shift();
-  }
+  if (backupHistory.length > 20) backupHistory.shift();
 }
 
-// ปรับเวลาเริ่มต้นให้ยังประมูลได้ตอนเริ่มรัน
-const now = Date.now();
-auctions.forEach((a, idx) => {
-  if (a.endTime < now) {
-    a.endTime = now + (15 + idx * 10) * 60 * 1000;
+// Middleware ป้องกันความปลอดภัย: เฉพาะคนที่มีรหัสลับเท่านั้นถึงจะเรียกใช้ API แอดมินได้
+function checkAdminAuth(req, res, next) {
+  const token = req.headers['x-admin-key'] || req.query.key;
+  if (token !== ADMIN_SECRET) {
+    return res.status(403).json({ error: 'ปฏิเสธการเข้าถึง: รหัสผ่านแอดมินไม่ถูกต้อง' });
   }
-});
-saveAuctions(auctions);
+  next();
+}
 
-// --- API สำหรับหน้า ADMIN ---
-// 1. ดึงรายการสินค้าทั้งหมด
-app.get('/api/admin/auctions', (req, res) => {
+// API สำหรับโปรแกรมหลังบ้านในเครื่องของคุณ
+app.get('/api/admin/auctions', checkAdminAuth, (req, res) => {
   res.json({ auctions, canUndo: backupHistory.length > 0, backupCount: backupHistory.length });
 });
 
-// 2. บันทึก / อัปเดตรายการทั้งหมด
-app.post('/api/admin/update-all', (req, res) => {
+app.post('/api/admin/update-all', checkAdminAuth, (req, res) => {
   const { newAuctions } = req.body;
-  if (!Array.isArray(newAuctions)) {
-    return res.status(400).json({ error: 'รูปแบบข้อมูลไม่ถูกต้อง' });
-  }
+  if (!Array.isArray(newAuctions)) return res.status(400).json({ error: 'รูปแบบข้อมูลไม่ถูกต้อง' });
 
-  // สำรองสถานะเดิมก่อนอัปเดต เพื่อให้กดย้อนกลับ (Undo) ได้
   createBackup("อัปเดตรายการสินค้า");
-
   auctions = newAuctions;
   saveAuctions(auctions);
 
-  // แจ้งหน้าเว็บทุกคนแบบ Real-time ทันที!
+  // ส่งสัญญาณให้หน้าเว็บคนเล่นทุกคนอัปเดตทันที
   io.emit('init_data', auctions);
-
-  res.json({ success: true, message: 'อัปเดตและแจ้งเตือนหน้าเว็บเรียบร้อยแล้ว!', backupCount: backupHistory.length });
+  res.json({ success: true, message: 'อัปเดตสดขึ้นหน้าเว็บคนเล่นสำเร็จแล้ว!', backupCount: backupHistory.length });
 });
 
-// 3. กดย้อนกลับ (Undo / Revert ก่อนหน้า)
-app.post('/api/admin/undo', (req, res) => {
-  if (backupHistory.length === 0) {
-    return res.status(400).json({ error: 'ไม่มีประวัติก่อนหน้านี้ให้ย้อนกลับ' });
-  }
+app.post('/api/admin/undo', checkAdminAuth, (req, res) => {
+  if (backupHistory.length === 0) return res.status(400).json({ error: 'ไม่มีประวัติก่อนหน้านี้ให้ย้อนกลับ' });
 
   const lastBackup = backupHistory.pop();
   auctions = lastBackup.data;
   saveAuctions(auctions);
 
-  // แจ้งหน้าเว็บทุกคนให้อัปเดตตามที่ย้อนกลับ
   io.emit('init_data', auctions);
-
-  res.json({ success: true, message: `ย้อนกลับเป็นสถานะ: ${lastBackup.note} (${lastBackup.timestamp}) สำเร็จ!`, backupCount: backupHistory.length });
+  res.json({ success: true, message: `ย้อนกลับสถานะสำเร็จ: ${lastBackup.note}`, backupCount: backupHistory.length });
 });
 
-// เส้นทางหน้า Admin Dashboard
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
-
-// --- Socket.io สำหรับระบบ Real-time ---
+// Socket.io สำหรับคนเล่นทั่วไปเคาะราคา
 io.on('connection', (socket) => {
   socket.emit('init_data', auctions);
 
@@ -128,9 +105,8 @@ io.on('connection', (socket) => {
     }
 
     auction.currentPrice = Number(bidAmount);
-    auction.highestBidder = bidderName || 'Guest';
+    auction.highestBidder = bidderName || 'Player';
 
-    // Anti-Snipe: ถ้าเคาะใน 60 วินาทีสุดท้าย ขยายเวลาอีก 2 นาที
     if (auction.endTime - Date.now() < 60 * 1000) {
       auction.endTime += 2 * 60 * 1000;
     }
@@ -155,6 +131,5 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Server is running at http://localhost:${PORT}`);
-  console.log(`Admin Dashboard: http://localhost:${PORT}/admin`);
+  console.log(`Web Server running at http://localhost:${PORT}`);
 });

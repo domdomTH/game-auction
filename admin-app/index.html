@@ -3,35 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard - จัดการระบบประมูลหลังบ้าน</title>
+  <title>Roblox Auction Admin App - โปรแกรมควบคุมหลังบ้านส่วนตัว</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { font-family: 'Kanit', sans-serif; background-color: #0f172a; color: #f8fafc; }
-    .glass-box { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(8px); border: 1px solid rgba(51, 65, 85, 0.8); }
+    body { font-family: 'Kanit', sans-serif; background-color: #0b0f19; color: #f8fafc; }
+    .panel-box { background: #131b2e; border: 1px solid #1e293b; }
   </style>
 </head>
 <body class="p-4 md:p-8 min-h-screen">
 
   <div class="max-w-6xl mx-auto">
-    <!-- Admin Header -->
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-slate-700/80 mb-8">
-      <div>
-        <div class="flex items-center gap-2">
-          <span class="text-3xl">🛠️</span>
-          <h1 class="text-2xl font-bold text-white">ระบบจัดการหลังบ้าน (Admin Auction Control)</h1>
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-slate-800 mb-6">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-indigo-600/30">
+          🛡️
         </div>
-        <p class="text-xs text-slate-400 mt-1">เพิ่ม แก้ไข ยกเลิก ตั้งเวลา หรือย้อนกลับสถานะสินค้าประมูล</p>
+        <div>
+          <h1 class="text-2xl font-bold text-white flex items-center gap-2">
+            Roblox Auction <span class="text-indigo-400">Desktop Admin App</span>
+          </h1>
+          <p class="text-xs text-slate-400">โปรแกรมจัดการหลังบ้านส่วนตัวบนเครื่องคุณ (คนเล่นทั่วไปไม่มีสิทธิ์เข้าถึง)</p>
+        </div>
       </div>
 
-      <!-- Action Buttons: Save & Undo -->
+      <!-- Action Buttons -->
       <div class="flex items-center gap-3">
-        <!-- ปุ่มย้อนกลับ Undo -->
+        <!-- ปุ่ม Undo -->
         <button id="btnUndo" onclick="undoChanges()" class="bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:hover:bg-amber-600 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 transition" disabled>
           <span>↩️</span>
-          <span>ย้อนกลับก่อนอัปเดต</span>
+          <span>ย้อนกลับก่อนหน้า</span>
           <span id="undoBadge" class="bg-amber-800 text-amber-200 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
         </button>
 
@@ -43,9 +47,24 @@
       </div>
     </div>
 
-    <!-- ปุ่มสร้างรายการใหม่ -->
+    <!-- แถบกำหนดเป้าหมายเซิร์ฟเวอร์ -->
+    <div class="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800 flex flex-wrap items-center justify-between gap-4 mb-6 text-xs">
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400">เป้าหมายเซิร์ฟเวอร์:</span>
+        <select id="serverTarget" onchange="loadData()" class="bg-slate-800 border border-slate-700 text-white rounded-lg px-2.5 py-1 font-semibold focus:outline-none">
+          <option value="http://localhost:3000">เครื่องของฉัน (Localhost:3000)</option>
+          <option value="https://game-auction.onrender.com">เซิร์ฟเวอร์ออนไลน์จริง (Render Cloud)</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-2 text-slate-400">
+        <span>🔐 รหัสผ่านแอดมิน:</span>
+        <input type="password" id="adminSecret" value="roblox_secret_key_999" class="bg-slate-800 border border-slate-700 text-amber-300 px-2 py-1 rounded-lg w-44 font-mono text-center focus:outline-none">
+      </div>
+    </div>
+
+    <!-- แถบเพิ่มไอเทม -->
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-lg font-bold text-slate-200">รายการไอเทมในระบบ (<span id="itemCount">0</span>)</h2>
+      <h2 class="text-base font-bold text-slate-300">รายการไอเทมในระบบทั้งหมด (<span id="itemCount">0</span>)</h2>
       <button onclick="addNewItem()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-1.5 transition">
         <span>➕</span> เพิ่มไอเทมประมูลใหม่
       </button>
@@ -66,6 +85,14 @@
   <script>
     let currentAuctions = [];
 
+    function getServerUrl() {
+      return document.getElementById('serverTarget').value;
+    }
+
+    function getAdminKey() {
+      return document.getElementById('adminSecret').value;
+    }
+
     function showToast(msg, isSuccess = true) {
       const toast = document.getElementById('toast');
       document.getElementById('tMsg').innerText = msg;
@@ -79,13 +106,17 @@
 
     async function loadData() {
       try {
-        const res = await fetch('/api/admin/auctions');
+        const res = await fetch(`${getServerUrl()}/api/admin/auctions`, {
+          headers: { 'x-admin-key': getAdminKey() }
+        });
+        if (!res.ok) throw new Error('รหัสผ่านไม่ถูกต้อง หรือเชื่อมต่อไม่ได้');
         const data = await res.json();
         currentAuctions = data.auctions;
         updateUndoButton(data.canUndo, data.backupCount);
         renderAdminItems();
+        showToast('โหลดข้อมูลสินค้าสำเร็จ');
       } catch (err) {
-        showToast('โหลดข้อมูลล้มเหลว', false);
+        showToast(err.message, false);
       }
     }
 
@@ -101,12 +132,11 @@
       document.getElementById('itemCount').innerText = currentAuctions.length;
 
       container.innerHTML = currentAuctions.map((item, idx) => {
-        // แปลง endTime เป็นนาทีคงเหลือ
         const minsRemaining = Math.max(0, Math.round((item.endTime - Date.now()) / 60000));
         const isCancelled = item.status === 'cancelled';
 
         return `
-        <div class="glass-box rounded-2xl p-6 transition border ${isCancelled ? 'border-red-500/50 bg-red-950/10' : 'border-slate-700'}">
+        <div class="panel-box rounded-2xl p-6 transition ${isCancelled ? 'border-red-500/50 bg-red-950/20' : ''}">
           <div class="flex flex-col md:flex-row gap-6">
             <!-- ภาพ Preview -->
             <div class="w-full md:w-48 flex flex-col items-center gap-2">
@@ -114,19 +144,19 @@
                 <img id="preview-img-${item.id}" src="${item.image}" alt="Preview" class="max-h-full object-contain" onerror="this.src='https://placehold.co/200x200?text=No+Image'">
               </div>
               <span class="text-[11px] font-bold ${isCancelled ? 'text-red-400' : 'text-emerald-400'}">
-                สถานะ: ${isCancelled ? '❌ ยกเลิกแล้ว' : '🟢 เปิดประมูล'}
+                สถานะ: ${isCancelled ? '❌ ยกเลิกประมูลแล้ว' : '🟢 กำลังเปิดประมูล'}
               </span>
             </div>
 
             <!-- ฟอร์มแก้ไข -->
             <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="md:col-span-2">
-                <label class="block text-xs text-slate-400 mb-1">ชื่อไอเทม:</label>
+                <label class="block text-xs text-slate-400 mb-1">ชื่อไอเทม Roblox:</label>
                 <input type="text" onchange="updateField(${idx}, 'title', this.value)" value="${item.title}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-medium focus:outline-none focus:border-indigo-400">
               </div>
 
               <div>
-                <label class="block text-xs text-slate-400 mb-1">หมวดหมู่/เกม:</label>
+                <label class="block text-xs text-slate-400 mb-1">ประเภท/หมวดหมู่:</label>
                 <input type="text" onchange="updateField(${idx}, 'game', this.value)" value="${item.game}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-400">
               </div>
 
@@ -141,7 +171,7 @@
               </div>
 
               <div>
-                <label class="block text-xs text-slate-400 mb-1">ราคาปัจจุบัน (Robux / R$):</label>
+                <label class="block text-xs text-slate-400 mb-1">ราคาปัจจุบัน (R$):</label>
                 <input type="number" onchange="updateField(${idx}, 'currentPrice', Number(this.value))" value="${item.currentPrice}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-amber-400 font-bold focus:outline-none focus:border-indigo-400">
               </div>
 
@@ -194,7 +224,7 @@
       const input = document.getElementById(`mins-${id}`);
       const mins = Number(input.value) || 0;
       currentAuctions[index].endTime = Date.now() + mins * 60 * 1000;
-      showToast(`ตั้งเวลาไอเทม #${currentAuctions[index].id} ให้หมดใน ${mins} นาทีเรียบร้อย! อย่าลืมกดปุ่ม "อัปเดตสดขึ้นเว็บไซต์"`);
+      showToast(`ตั้งเวลาไอเทม #${currentAuctions[index].id} ให้หมดใน ${mins} นาทีเรียบร้อย! กด 'อัปเดตสดขึ้นเว็บไซต์' เพื่อส่งผล`);
     }
 
     function addExtraTime(index, extraMins) {
@@ -237,16 +267,18 @@
       showToast("เพิ่มไอเทมใหม่แล้ว! ปรับแต่งข้อมูลแล้วกด 'อัปเดตสดขึ้นเว็บไซต์'");
     }
 
-    // ฟังก์ชันกด "อัปเดตสดขึ้นเว็บไซต์ (Sync Live)"
     async function saveAndSync() {
       const btn = document.getElementById('btnSync');
-      btn.innerText = 'กำลังส่งข้อมูล... ⏳';
+      btn.innerText = 'กำลังส่งข้อมูลขึ้นเว็บ... ⏳';
       btn.disabled = true;
 
       try {
-        const res = await fetch('/api/admin/update-all', {
+        const res = await fetch(`${getServerUrl()}/api/admin/update-all`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-admin-key': getAdminKey()
+          },
           body: JSON.stringify({ newAuctions: currentAuctions })
         });
         const result = await res.json();
@@ -264,12 +296,14 @@
       }
     }
 
-    // ฟังก์ชันกดย้อนกลับ Undo
     async function undoChanges() {
       if (!confirm('คุณต้องการย้อนกลับไปค่าก่อนหน้าหรือไม่?')) return;
 
       try {
-        const res = await fetch('/api/admin/undo', { method: 'POST' });
+        const res = await fetch(`${getServerUrl()}/api/admin/undo`, {
+          method: 'POST',
+          headers: { 'x-admin-key': getAdminKey() }
+        });
         const result = await res.json();
         if (result.success) {
           showToast(result.message, true);
