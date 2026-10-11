@@ -15,6 +15,9 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_SECRET = process.env.ADMIN_SECRET || 'roblox_secret_key_999';
 const DB_FILE = path.join(__dirname, 'auctions.json');
 
+const cors = require('cors');
+
+app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
